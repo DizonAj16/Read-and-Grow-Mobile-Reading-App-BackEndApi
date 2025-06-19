@@ -27,3 +27,4 @@ Route::middleware('auth:sanctum')->get('/teacher/students', [UserController::cla
 Route::middleware('auth:sanctum')->get('/teachers', [UserController::class, 'getAllTeachers']);
 
 Route::middleware('auth:sanctum')->delete('/user/{id}', [UserController::class, 'deleteUser']);
+Route::middleware('auth:sanctum')->put('/user/{id}', [UserController::class, 'updateUser']);

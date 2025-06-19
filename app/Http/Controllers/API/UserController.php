@@ -143,4 +143,63 @@ class UserController extends Controller
 
         return response()->json(['message' => 'User deleted successfully']);
     }
+
+    public function updateUser(Request $request, $id)
+    {
+
+        \Log::info('Update Request:', $request->all());
+
+        $authUser = $request->user(); // Logged-in user
+        $targetUser = User::find($id); // User being edited
+
+        if (!$targetUser) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        // Authorization rules
+        if ($authUser->isTeacher()) {
+            // Teachers can only edit students
+            if ($targetUser->role !== User::ROLE_STUDENT) {
+                return response()->json(['message' => 'Forbidden: Teachers can only edit students'], 403);
+            }
+        } elseif ($authUser->isAdmin()) {
+            // Admin can edit both teachers and students
+            if (!in_array($targetUser->role, [User::ROLE_STUDENT, User::ROLE_TEACHER])) {
+                return response()->json(['message' => 'Forbidden: Cannot edit this type of user'], 403);
+            }
+        } else {
+            // Students or any other role not allowed
+            return response()->json(['message' => 'Forbidden: Only admins and teachers can edit'], 403);
+        }
+
+        // Update common user fields
+        $targetUser->username = $request->input('username', $targetUser->username);
+        $targetUser->save();
+
+        // Role-specific updates
+        if ($targetUser->role === User::ROLE_TEACHER) {
+            $teacher = Teacher::where('user_id', $targetUser->id)->first();
+            if ($teacher) {
+                $teacher->teacher_name = $request->input('teacher_name', $teacher->teacher_name);
+                $teacher->teacher_email = $request->input('teacher_email', $teacher->teacher_email);
+                $teacher->teacher_position = $request->input('teacher_position', $teacher->teacher_position);
+                $teacher->save();
+            }
+        }
+
+        if ($targetUser->role === User::ROLE_STUDENT) {
+            $student = Student::where('user_id', $targetUser->id)->first();
+            if ($student) {
+                $student->student_name = $request->input('student_name', $student->student_name);
+                $student->student_lrn = $request->input('student_lrn', $student->student_lrn);
+                $student->student_grade = $request->input('student_grade', $student->student_grade);
+                $student->student_section = $request->input('student_section', $student->student_section);
+                $student->save();
+            }
+        }
+
+        return response()->json(['message' => 'User updated successfully']);
+    }
+
+
 }
