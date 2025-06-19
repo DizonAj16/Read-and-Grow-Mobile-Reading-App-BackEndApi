@@ -12,6 +12,11 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
+    // Role constants
+    public const ROLE_ADMIN = 'admin';
+    public const ROLE_TEACHER = 'teacher';
+    public const ROLE_STUDENT = 'student';
+
     protected $fillable = [
         'username', 'password', 'role',
 
@@ -21,4 +26,21 @@ class User extends Authenticatable
     ];
 
     protected $hidden = ['password'];
+
+    // Helper methods for role checks
+    public function isAdmin()
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isTeacher()
+    {
+        return $this->role === self::ROLE_TEACHER;
+    }
+
+    public function isStudent()
+    {
+        return $this->role === self::ROLE_STUDENT;
+    }
+
 }

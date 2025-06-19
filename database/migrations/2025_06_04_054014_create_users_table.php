@@ -18,24 +18,8 @@ return new class extends Migration {
             $table->string('password');
             $table->enum('role', ['admin', 'teacher', 'student']);
 
-            // Admin-specific
-            $table->string('admin_email')->unique()->nullable();
-            $table->string('admin_security_code')->nullable();
-
-            // Teacher-specific
-            $table->string('teacher_name')->nullable();
-            $table->string('teacher_email')->unique()->nullable();
-            $table->string('teacher_position')->nullable();
-
-            // Student-specific
-            $table->string('student_name')->nullable();
-            $table->string('student_lrn')->unique()->nullable();
-            $table->string('student_grade')->nullable();
-            $table->string('student_section')->nullable();
-
             $table->timestamps();
         });
-
     }
 
     /**
