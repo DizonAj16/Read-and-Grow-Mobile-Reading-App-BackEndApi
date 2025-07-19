@@ -40,13 +40,16 @@ class AuthenticationController extends Controller
     protected function findUserByLogin($login)
     {
         $user = User::where('username', $login)->first();
-        if ($user) return $user;
+        if ($user)
+            return $user;
 
         $teacher = \DB::table('teachers')->where('teacher_email', $login)->first();
-        if ($teacher) return User::find($teacher->user_id);
+        if ($teacher)
+            return User::find($teacher->user_id);
 
         $admin = \DB::table('admins')->where('admin_email', $login)->first();
-        if ($admin) return User::find($admin->user_id);
+        if ($admin)
+            return User::find($admin->user_id);
 
         return null;
     }
@@ -212,7 +215,7 @@ class AuthenticationController extends Controller
     public function adminLogin(Request $request)
     {
         $validator = \Validator::make($request->all(), [
-            'login' => 'required', // username or email
+            'login' => 'required', 
             'password' => 'required',
         ]);
 
@@ -225,14 +228,9 @@ class AuthenticationController extends Controller
         }
 
         $login = $request->login;
-        $user = User::where(function($query) use ($login) {
-                $query->where('username', $login)
-                      ->orWhere('admin_email', $login);
-            })
-            ->where('role', 'admin')
-            ->first();
+        $user = $this->findUserByLogin($login);
 
-        if (!$user) {
+        if (!$user || $user->role !== 'admin') {
             return response()->json([
                 'success' => false,
                 'message' => 'Admin user not found'
@@ -275,4 +273,5 @@ class AuthenticationController extends Controller
             'message' => 'Admin login successful'
         ]);
     }
+
 }

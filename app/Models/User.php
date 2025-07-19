@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -12,35 +11,81 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    // Role constants
-    public const ROLE_ADMIN = 'admin';
+    /**
+     * Role constants for easy access and comparison.
+     */
+    public const ROLE_ADMIN   = 'admin';
     public const ROLE_TEACHER = 'teacher';
     public const ROLE_STUDENT = 'student';
 
+    /**
+     * Fields that can be mass assigned.
+     */
     protected $fillable = [
-        'username', 'password', 'role',
-
-        'admin_email', 'admin_security_code',
-        'teacher_name', 'teacher_email', 'teacher_position',
-        'student_name', 'student_lrn', 'student_grade', 'student_section',
+        'username',
+        'password',
+        'role',
     ];
 
-    protected $hidden = ['password'];
+    /**
+     * Fields that should be hidden in arrays.
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
-    // Helper methods for role checks
-    public function isAdmin()
+    /**
+     * Automatically cast attributes.
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+    ];
+
+    // ────────────────────────────────────────────────
+    //                 Role Helper Methods
+    // ────────────────────────────────────────────────
+
+    public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
     }
 
-    public function isTeacher()
+    public function isTeacher(): bool
     {
         return $this->role === self::ROLE_TEACHER;
     }
 
-    public function isStudent()
+    public function isStudent(): bool
     {
         return $this->role === self::ROLE_STUDENT;
     }
 
+    // ────────────────────────────────────────────────
+    //                Relationships
+    // ────────────────────────────────────────────────
+
+    /**
+     * Get the admin profile related to this user.
+     */
+    public function admin()
+    {
+        return $this->hasOne(Admin::class);
+    }
+
+    /**
+     * Get the teacher profile related to this user.
+     */
+    public function teacher()
+    {
+        return $this->hasOne(Teacher::class);
+    }
+
+    /**
+     * Get the student profile related to this user.
+     */
+    public function student()
+    {
+        return $this->hasOne(Student::class);
+    }
 }

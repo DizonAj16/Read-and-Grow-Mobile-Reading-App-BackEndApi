@@ -15,10 +15,18 @@ class Teacher extends Model
         'teacher_name',
         'teacher_email',
         'teacher_position',
+        'profile_picture',
+
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class);
     }
+
+    public function classRooms()
+    {
+        return $this->hasMany(ClassRoom::class);
+    }
+
 }

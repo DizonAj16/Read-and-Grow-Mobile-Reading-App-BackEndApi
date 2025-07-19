@@ -16,10 +16,19 @@ class Student extends Model
         'student_lrn',
         'student_grade',
         'student_section',
+        'class_room_id',
+        'profile_picture',
     ];
+
+    // Relationships
 
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function classRoom()
+    {
+        return $this->belongsTo(ClassRoom::class); // ✅ Each student belongs to one class
     }
 }

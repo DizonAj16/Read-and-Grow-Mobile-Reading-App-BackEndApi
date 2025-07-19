@@ -4,6 +4,8 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Admin;
 use App\Models\Teacher;
@@ -65,19 +67,16 @@ class UserController extends Controller
      */
     public function getAllStudents(Request $request)
     {
-        $user = $request->user();
-        if (!$user || (!$user->isTeacher() && !$user->isAdmin())) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
         $students = Student::with('user:id,username')->get()->map(function ($student) {
             return [
                 'student_id' => $student->id,
-                'user_id' => $student->user_id, // <-- Add this line!
+                'user_id' => $student->user_id,
                 'student_name' => $student->student_name,
                 'student_lrn' => $student->student_lrn,
                 'student_grade' => $student->student_grade,
                 'student_section' => $student->student_section,
                 'username' => $student->user ? $student->user->username : null,
+                'profile_picture' => $student->profile_picture
             ];
         });
         return response()->json(['students' => $students]);
@@ -85,10 +84,6 @@ class UserController extends Controller
 
     public function getAllTeachers(Request $request)
     {
-        $user = $request->user();
-        if (!$user || (!$user->isTeacher() && !$user->isAdmin())) {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
         $teachers = Teacher::with('user:id,username')->get()->map(function ($teacher) {
             return [
                 'teacher_id' => $teacher->id,
@@ -113,30 +108,10 @@ class UserController extends Controller
     }
     public function deleteUser(Request $request, $id)
     {
-        $user = $request->user();
         $targetUser = User::find($id);
 
         if (!$targetUser) {
             return response()->json(['message' => 'User not found'], 404);
-        }
-
-        // Teachers can only delete students
-        if ($user->isTeacher()) {
-            if ($targetUser->role !== User::ROLE_STUDENT) {
-                return response()->json(['message' => 'Forbidden'], 403);
-            }
-        }
-
-        // Admins can delete students and teachers
-        if ($user->isAdmin()) {
-            if (!in_array($targetUser->role, [User::ROLE_STUDENT, User::ROLE_TEACHER])) {
-                return response()->json(['message' => 'Forbidden'], 403);
-            }
-        }
-
-        // Only teachers and admins can delete, so if not either, forbid
-        if (!$user->isTeacher() && !$user->isAdmin()) {
-            return response()->json(['message' => 'Forbidden'], 403);
         }
 
         $targetUser->delete();
@@ -200,6 +175,58 @@ class UserController extends Controller
 
         return response()->json(['message' => 'User updated successfully']);
     }
+
+    public function uploadTeacherPicture(Request $request)
+    {
+        $request->validate([
+            'teacher_id' => 'required|exists:teachers,user_id',
+            'profile_picture' => 'required|image|mimes:jpg,jpeg,png|max:5120',
+        ]);
+
+        $teacher = Teacher::where('user_id', $request->teacher_id)->firstOrFail();
+
+        if ($teacher->profile_picture) {
+            Storage::disk('public')->delete('profile_images/' . $teacher->profile_picture);
+        }
+
+        $path = $request->file('profile_picture')->store('profile_images', 'public');
+        $teacher->profile_picture = basename($path);
+        $teacher->save();
+
+        return response()->json([
+            'message' => 'Teacher profile updated',
+            'profile_picture' => asset('storage/profile_images/' . $teacher->profile_picture),
+        ]);
+    }
+
+
+
+    public function uploadStudentPicture(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:students,user_id',
+            'profile_picture' => 'required|image|mimes:jpg,jpeg,png|max:5120',
+        ]);
+
+        $student = Student::where('user_id', $request->student_id)->firstOrFail();
+
+        if ($student->profile_picture) {
+            Storage::disk('public')->delete('profile_images/' . $student->profile_picture);
+        }
+
+        $path = $request->file('profile_picture')->store('profile_images', 'public');
+        $student->profile_picture = basename($path);
+        $student->save();
+
+        return response()->json([
+            'message' => 'Student profile updated',
+            'profile_picture' => asset('storage/profile_images/' . $student->profile_picture),
+        ]);
+    }
+
+
+
+
 
 
 }
