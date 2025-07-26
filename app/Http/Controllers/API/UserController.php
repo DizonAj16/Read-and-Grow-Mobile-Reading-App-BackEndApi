@@ -121,7 +121,6 @@ class UserController extends Controller
 
     public function updateUser(Request $request, $id)
     {
-
         \Log::info('Update Request:', $request->all());
 
         $authUser = $request->user(); // Logged-in user
@@ -147,17 +146,20 @@ class UserController extends Controller
             return response()->json(['message' => 'Forbidden: Only admins and teachers can edit'], 403);
         }
 
-        // Update common user fields
+        // ✅ Update common user fields
         $targetUser->username = $request->input('username', $targetUser->username);
         $targetUser->save();
 
-        // Role-specific updates
+        // ✅ Role-specific updates
         if ($targetUser->role === User::ROLE_TEACHER) {
             $teacher = Teacher::where('user_id', $targetUser->id)->first();
             if ($teacher) {
                 $teacher->teacher_name = $request->input('teacher_name', $teacher->teacher_name);
                 $teacher->teacher_email = $request->input('teacher_email', $teacher->teacher_email);
                 $teacher->teacher_position = $request->input('teacher_position', $teacher->teacher_position);
+
+                // ✅ FIX: Update the username column in the teachers table as well
+                $teacher->username = $request->input('username', $teacher->username);
                 $teacher->save();
             }
         }
@@ -175,6 +177,7 @@ class UserController extends Controller
 
         return response()->json(['message' => 'User updated successfully']);
     }
+
 
     public function uploadTeacherPicture(Request $request)
     {

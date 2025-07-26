@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\API\ClassRoomController;
+use Illuminate\Support\Facades\App;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
@@ -165,7 +167,7 @@ class AuthenticationController extends Controller
     public function login(Request $request)
     {
         $validator = \Validator::make($request->all(), [
-            'login' => 'required', // username or email
+            'login' => 'required',
             'password' => 'required'
         ]);
 
@@ -190,13 +192,32 @@ class AuthenticationController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
         $details = $this->fetchUserDetails($user);
 
+        // ✅ Default empty class data
+        $studentClass = null;
+
+        // ✅ If role is student, call the getStudentClasses method
+        if ($user->role === 'student') {
+            $classRoomController = App::make(ClassRoomController::class);
+
+            // Manually authenticate for the request (so auth()->id() works)
+            auth()->login($user);
+
+            $response = $classRoomController->getStudentClasses(new Request());
+
+            if ($response->getStatusCode() === 200) {
+                $studentClass = $response->getData()->data;
+            }
+        }
+
         return response()->json([
             'token' => $token,
             'role' => $user->role,
             'user' => $user,
-            'details' => $details
+            'details' => $details,
+            'student_class' => $studentClass // ✅ Now included automatically
         ]);
     }
+
 
     public function logout(Request $request)
     {
@@ -215,7 +236,7 @@ class AuthenticationController extends Controller
     public function adminLogin(Request $request)
     {
         $validator = \Validator::make($request->all(), [
-            'login' => 'required', 
+            'login' => 'required',
             'password' => 'required',
         ]);
 

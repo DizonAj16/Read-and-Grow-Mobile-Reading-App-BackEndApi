@@ -37,11 +37,15 @@ Route::middleware(['auth:sanctum', 'role:teacher,admin'])->prefix('teachers')->g
 
 // ============ STUDENT ROUTES ============
 Route::middleware(['auth:sanctum', 'role:student'])->prefix('students')->group(function () {
-    Route::get('{id}', [UserController::class, 'getStudent']);                // GET /students/{id}
+    Route::get('my-classes', [ClassRoomController::class, 'getStudentClasses']); // put first
+    Route::get('{id}', [UserController::class, 'getStudent']);
 });
 
+
+
+
 // ============ CLASSROOM ROUTES ============
-Route::middleware(['auth:sanctum', 'role:teacher,admin'])->prefix('classrooms')->group(function () {
+Route::middleware(['auth:sanctum', 'role:teacher,admin,student'])->prefix('classrooms')->group(function () {
     Route::post('/', [ClassRoomController::class, 'store']);
     Route::get('/', [ClassRoomController::class, 'index']);
     Route::get('{id}', [ClassRoomController::class, 'show']);
@@ -76,3 +80,11 @@ Route::middleware(['auth:sanctum', 'role:teacher'])->get('/test-role-teacher', f
 Route::middleware(['auth:sanctum', 'role:student'])->get('/test-role-student', function () {
     return response()->json(['message' => 'You are a student']);
 });
+
+Route::middleware('auth:sanctum')->get('/test-auth', function () {
+    return response()->json([
+        'auth_id' => auth()->id(),
+        'user' => auth()->user()
+    ]);
+});
+

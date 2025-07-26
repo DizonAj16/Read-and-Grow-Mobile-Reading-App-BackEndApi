@@ -41,14 +41,16 @@ class ClassRoom extends Model
 
     // Relationships
 
-    public function teacher()
-    {
-        return $this->belongsTo(Teacher::class);
-    }
+public function students()
+{
+    return $this->hasMany(Student::class, 'class_room_id');
+}
 
-    public function students()
-    {
-        return $this->hasMany(Student::class);
-    }
+public function teacher()
+{
+    return $this->belongsTo(Teacher::class, 'teacher_id', 'id');
+}
+
+
 
 }

@@ -24,11 +24,13 @@ class Student extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
-    public function classRoom()
+
+    public function classroom()
     {
-        return $this->belongsTo(ClassRoom::class); // ✅ Each student belongs to one class
+        return $this->belongsTo(ClassRoom::class, 'class_room_id');
     }
+
 }

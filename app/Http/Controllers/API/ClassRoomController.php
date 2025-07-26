@@ -59,6 +59,9 @@ class ClassRoomController extends Controller
                     'school_year' => $class->school_year,
                     'student_count' => $class->students()->count(),
                     'teacher_name' => $class->teacher->teacher_name ?? 'Unknown',
+                    'classroom_code' => $class->classroom_code,
+                    // Optional: include background image URL if needed
+                    'background_image' => $class->background_image ? asset("storage/class_backgrounds/{$class->background_image}") : null,
                 ];
             });
 
@@ -87,6 +90,10 @@ class ClassRoomController extends Controller
             'school_year' => $classroom->school_year,
             'student_count' => $classroom->students->count(),
             'teacher_name' => optional($classroom->teacher)->teacher_name ?? 'Unknown',
+            'classroom_code' => $classroom->classroom_code,
+            // Optional: include background image URL if needed
+            'background_image' => $classroom->background_image ? asset("storage/class_backgrounds/{$classroom->background_image}") : null,
+            // Include students with their details
             'students' => $classroom->students->map(function ($student) {
                 return [
                     'id' => $student->id,
@@ -267,32 +274,108 @@ class ClassRoomController extends Controller
             })
         ]);
     }
-    
+
     public function uploadBackground(Request $request, $classId)
-{
-    $request->validate([
-        'background_image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
-    ]);
+    {
+        $request->validate([
+            'background_image' => 'required|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
 
-    $classroom = ClassRoom::findOrFail($classId);
+        $classroom = ClassRoom::findOrFail($classId);
 
-    if ($classroom->background_image && 
-        Storage::disk('public')->exists("class_backgrounds/{$classroom->background_image}")) {
-        Storage::disk('public')->delete("class_backgrounds/{$classroom->background_image}");
+        if (
+            $classroom->background_image &&
+            Storage::disk('public')->exists("class_backgrounds/{$classroom->background_image}")
+        ) {
+            Storage::disk('public')->delete("class_backgrounds/{$classroom->background_image}");
+        }
+
+        $fileName = time() . '_' . $request->file('background_image')->getClientOriginalName();
+        $request->file('background_image')->storeAs('class_backgrounds', $fileName, 'public');
+
+        $classroom->background_image = $fileName;
+        $classroom->save();
+
+        return response()->json([
+            'message' => 'Background updated successfully',
+            'background_image' => $fileName,
+            'background_image_url' => asset("storage/class_backgrounds/$fileName"),
+        ]);
     }
 
-    $fileName = time() . '_' . $request->file('background_image')->getClientOriginalName();
-    $request->file('background_image')->storeAs('class_backgrounds', $fileName, 'public');
+    public function getStudentClasses(Request $request)
+    {
+        \Log::info('🔥 getStudentClasses HIT', [
+            'auth_id' => auth()->id(),
+            'auth_user' => auth()->user()
+        ]);
 
-    $classroom->background_image = $fileName;
-    $classroom->save();
+        // ✅ Fetch student by user_id
+        $student = Student::where('user_id', auth()->id())->first();
 
-    return response()->json([
-        'message' => 'Background updated successfully',
-        'background_image' => $fileName,
-        'background_image_url' => asset("storage/class_backgrounds/$fileName"),
-    ]);
-}
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Student not found'
+            ], 404);
+        }
+
+        // ✅ Get all class IDs assigned to this student
+        $classIds = Student::where('user_id', $student->user_id)
+            ->pluck('class_room_id')
+            ->filter()
+            ->unique();
+
+        $classes = ClassRoom::whereIn('id', $classIds)
+            ->with('teacher') // Make sure the relationship is correct
+            ->get();
+
+        if ($classes->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Student is not assigned to any class',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $classes->map(function ($classroom) {
+                $teacher = $classroom->teacher; // Teacher model
+    
+                return [
+                    'id' => $classroom->id,
+                    'class_name' => $classroom->class_name,
+                    'grade_level' => $classroom->grade_level,
+                    'section' => $classroom->section ?? 'N/A',
+                    'classroom_code' => $classroom->classroom_code ?? 'N/A',
+
+                    // ✅ Teacher Details (Dynamic)
+                    'teacher_name' => $teacher->teacher_name ?? 'N/A',
+                    'teacher_email' => $teacher->teacher_email ?? 'N/A',
+                    'teacher_position' => $teacher->teacher_position ?? 'Teacher',
+                    'teacher_avatar' => $teacher && $teacher->profile_picture
+                        ? asset("storage/profile_images/{$teacher->profile_picture}")
+                        : asset("storage/profile_images/default.png"), // fallback default
+    
+                    // ✅ Class Background (Dynamic)
+                    'background_image' => $classroom->background_image
+                        ? asset("storage/class_backgrounds/{$classroom->background_image}")
+                        : null,
+                ];
+            }),
+        ]);
+    }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

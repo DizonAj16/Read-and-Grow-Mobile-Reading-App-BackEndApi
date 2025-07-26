@@ -14,7 +14,7 @@ class User extends Authenticatable
     /**
      * Role constants for easy access and comparison.
      */
-    public const ROLE_ADMIN   = 'admin';
+    public const ROLE_ADMIN = 'admin';
     public const ROLE_TEACHER = 'teacher';
     public const ROLE_STUDENT = 'student';
 
@@ -86,6 +86,7 @@ class User extends Authenticatable
      */
     public function student()
     {
-        return $this->hasOne(Student::class);
+        return $this->hasOne(Student::class, 'user_id', 'id');
     }
+
 }
