@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthenticationController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\ClassRoomController;
+use App\Http\Controllers\API\GradeController;
+use App\Http\Controllers\API\TaskController;
+use App\Http\Controllers\API\StudentTaskProgressController;
 
 // ============ AUTHENTICATION ROUTES ============
 Route::prefix('auth')->group(function () {
@@ -38,9 +41,25 @@ Route::middleware(['auth:sanctum', 'role:teacher,admin'])->prefix('teachers')->g
 // ============ STUDENT ROUTES ============
 Route::middleware(['auth:sanctum', 'role:student'])->prefix('students')->group(function () {
     Route::get('my-classes', [ClassRoomController::class, 'getStudentClasses']); // put first
+    Route::get('tasks', [ClassRoomController::class, 'getStudentTasks']);
+    Route::get('    profile-pictures', [UserController::class, 'getAllStudentProfilePictures']); // ✅ NEW ROUTE HERE
     Route::get('{id}', [UserController::class, 'getStudent']);
+
 });
 
+// ============ GRADES & TASKS ROUTES ============
+Route::middleware(['auth:sanctum', 'role:teacher,admin,student'])->prefix('grades')->group(function () {
+    Route::get('/', [GradeController::class, 'index']); // ✅ Get all grades (English 1–5)
+    Route::get('{grade}/tasks', [TaskController::class, 'index']); // ✅ Get tasks for specific grade
+});
+
+// ============ STUDENT PROGRESS ROUTES ============
+Route::middleware(['auth:sanctum', 'role:student'])->prefix('progress')->group(function () {
+    Route::post('/', [StudentTaskProgressController::class, 'store']);
+    Route::get('{student_id}', [StudentTaskProgressController::class, 'showProgress']);
+    Route::post('reset/{student_id}/{task_id}', [StudentTaskProgressController::class, 'resetAttempts']);
+
+});
 
 
 
@@ -58,7 +77,11 @@ Route::middleware(['auth:sanctum', 'role:teacher,admin,student'])->prefix('class
 
     // ✅ NEW: Upload background image
     Route::post('{id}/upload-background', [ClassRoomController::class, 'uploadBackground']);
+
+    // ✅ NEW: Student Join Class
+    Route::post('join', [ClassRoomController::class, 'joinClass']);  // <--- ADD THIS LINE
 });
+
 
 
 // ============ PROFILE PICTURE UPLOAD ROUTES ============
@@ -88,3 +111,11 @@ Route::middleware('auth:sanctum')->get('/test-auth', function () {
     ]);
 });
 
+Route::get('/test-grades', [GradeController::class, 'index']);
+
+Route::middleware(['auth:sanctum', 'role:student'])->get('/debug-auth', function () {
+    return response()->json([
+        'auth_id' => Auth::id(),
+        'user' => auth()->user()
+    ]);
+});

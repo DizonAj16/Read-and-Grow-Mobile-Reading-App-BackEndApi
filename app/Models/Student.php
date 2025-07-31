@@ -33,4 +33,10 @@ class Student extends Model
         return $this->belongsTo(ClassRoom::class, 'class_room_id');
     }
 
+    public function progress()
+    {
+        return $this->hasMany(StudentTaskProgress::class);
+    }
+
+
 }

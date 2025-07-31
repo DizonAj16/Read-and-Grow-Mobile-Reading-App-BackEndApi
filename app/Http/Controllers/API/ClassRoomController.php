@@ -68,11 +68,8 @@ class ClassRoomController extends Controller
         return response()->json($classes);
     }
 
-
-
-
     /**
-     * Optional: Show a specific classroom with students
+     * Show a specific classroom with students and teacher details.
      */
     public function show($id)
     {
@@ -108,8 +105,6 @@ class ClassRoomController extends Controller
             }),
         ]);
     }
-
-
 
     /**
      * Delete a class owned by the authenticated teacher.
@@ -166,42 +161,62 @@ class ClassRoomController extends Controller
         ]);
     }
 
-
-
+    /**
+     * Assign a student to a class (teacher-only).
+     */
     public function assignStudent(Request $request)
     {
-
         $request->validate([
             'student_id' => 'required|exists:students,id',
             'class_room_id' => 'required|exists:class_rooms,id',
         ]);
 
         $teacher = Teacher::where('user_id', $request->user()->id)->firstOrFail();
+
         $classroom = ClassRoom::where('id', $request->class_room_id)
             ->where('teacher_id', $teacher->id)
-            ->firstOrFail();
+            ->first();
 
         if (!$classroom) {
             return response()->json(['message' => 'You do not own this class'], 403);
         }
 
-
-
         $student = Student::findOrFail($request->student_id);
+
+        // 🔍 Check grade level match
+        if ($student->student_grade !== $classroom->grade_level) {
+            return response()->json([
+                'message' => "Student grade ({$student->student_grade}) does not match class grade level ({$classroom->grade_level})"
+            ], 422);
+        }
+
+        // 🔍 Check section match
+        if ($student->student_section !== $classroom->section) {
+            return response()->json([
+                'message' => "Student section ({$student->student_section}) does not match class section ({$classroom->section})"
+            ], 422);
+        }
+
+        // ✅ Check if already assigned
         if ($student->class_room_id) {
             return response()->json(['message' => 'Student already assigned to a class'], 409);
         }
 
+        // ✅ Assign
         $student->class_room_id = $classroom->id;
         $student->save();
 
-        // Optional: update class student count
         $classroom->number_of_students = $classroom->students()->count();
         $classroom->save();
 
         return response()->json(['message' => 'Student assigned to class successfully']);
     }
 
+
+
+    /**
+     * Unassign a student from their class (teacher-only).
+     */
     public function unassignStudent(Request $request)
     {
         $request->validate([
@@ -225,9 +240,15 @@ class ClassRoomController extends Controller
         $classroom->number_of_students = $classroom->students()->count();
         $classroom->save();
 
-        return response()->json(['message' => 'Student unassigned from class successfully']);
+        return response()->json([
+            'message' => 'Student unassigned from class successfully',
+            'student' => $student->fresh(), // just in case
+        ]);
     }
 
+    /**
+     * Get all students assigned to a specific class.
+     */
     public function getAssignedStudents($class_id)
     {
         $classroom = ClassRoom::with('students')->find($class_id);
@@ -253,6 +274,9 @@ class ClassRoomController extends Controller
         ]);
     }
 
+    /**
+     * Get all students who are not assigned to any class.
+     */
     public function getUnassignedStudents()
     {
         $students = Student::whereNull('class_room_id')
@@ -275,6 +299,9 @@ class ClassRoomController extends Controller
         ]);
     }
 
+    /**
+     * Upload or update the background image for a class.
+     */
     public function uploadBackground(Request $request, $classId)
     {
         $request->validate([
@@ -303,6 +330,9 @@ class ClassRoomController extends Controller
         ]);
     }
 
+    /**
+     * Get all classes assigned to the authenticated student.
+     */
     public function getStudentClasses(Request $request)
     {
         \Log::info('🔥 getStudentClasses HIT', [
@@ -322,9 +352,10 @@ class ClassRoomController extends Controller
 
         // ✅ Get all class IDs assigned to this student
         $classIds = Student::where('user_id', $student->user_id)
+            ->whereNotNull('class_room_id')
             ->pluck('class_room_id')
-            ->filter()
             ->unique();
+
 
         $classes = ClassRoom::whereIn('id', $classIds)
             ->with('teacher') // Make sure the relationship is correct
@@ -366,17 +397,129 @@ class ClassRoomController extends Controller
         ]);
     }
 
+    /**
+     * Allow a student to join a class using a classroom code.
+     * Returns the same response format as getStudentClasses.
+     */
+    public function joinClass(Request $request)
+    {
+        $request->validate([
+            'classroom_code' => 'required|string|exists:class_rooms,classroom_code',
+        ]);
+
+        $student = Student::where('user_id', $request->user()->id)->first();
+
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only students can join classes'
+            ], 403);
+        }
+
+        $classroom = ClassRoom::with('teacher')
+            ->where('classroom_code', $request->classroom_code)
+            ->first();
+
+        if (!$classroom) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid classroom code'
+            ], 404);
+        }
+
+        // 🔍 Check grade level match
+        if ($student->student_grade !== $classroom->grade_level) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your grade does not match this classroom'
+            ], 422);
+        }
+
+        // 🔍 Check section match
+        if ($student->student_section !== $classroom->section) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Your section does not match this classroom'
+            ], 422);
+        }
+
+        // 🔁 Already in this class
+        if ($student->class_room_id == $classroom->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are already in this class'
+            ], 409);
+        }
+
+        // 🚫 Already in another class
+        if (!empty($student->class_room_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are already assigned to another class'
+            ], 409);
+        }
+
+        // ✅ Assign student
+        $student->class_room_id = $classroom->id;
+        $student->save();
+
+        $classroom->number_of_students = $classroom->students()->count();
+        $classroom->save();
+
+        $teacher = $classroom->teacher;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'You have successfully joined the class',
+            'class' => [
+                'id' => $classroom->id,
+                'class_name' => $classroom->class_name,
+                'grade_level' => $classroom->grade_level,
+                'section' => $classroom->section ?? 'N/A',
+                'classroom_code' => $classroom->classroom_code ?? 'N/A',
+                'teacher_name' => $teacher->teacher_name ?? 'N/A',
+                'teacher_email' => $teacher->teacher_email ?? 'N/A',
+                'teacher_position' => $teacher->teacher_position ?? 'Teacher',
+                'teacher_avatar' => $teacher && $teacher->profile_picture
+                    ? asset("storage/profile_images/{$teacher->profile_picture}")
+                    : asset("storage/profile_images/default.png"),
+                'background_image' => $classroom->background_image
+                    ? asset("storage/class_backgrounds/{$classroom->background_image}")
+                    : null,
+            ],
+        ], 200);
+    }
 
 
+    /**
+     * Get tasks for the authenticated student based on their class grade.
+     */
+    public function getStudentTasks(Request $request)
+    {
+        $student = Student::where('user_id', $request->user()->id)
+            ->with('classRoom') // Load class with grade_level
+            ->firstOrFail();
 
+        $grade = $student->classRoom->grade_level ?? null;
 
+        if (!$grade) {
+            return response()->json(['message' => 'Student is not assigned to any class'], 404);
+        }
 
+        // You can map grade to tasks (example mapping)
+        $tasksByGrade = [
+            '1' => ['Task 1', 'Task 2'],
+            '2' => ['Task 3'],
+            '3' => ['Task 4'],
+            '4' => ['Task 5', 'Task 6', 'Task 7', 'Task 8', 'Task 9'],
+            '5' => ['Task 10', 'Task 11', 'Task 12', 'Task 13'],
+        ];
 
+        $taskList = $tasksByGrade[$grade] ?? [];
 
-
-
-
-
-
-
+        return response()->json([
+            'grade_level' => $grade,
+            'tasks' => $taskList,
+        ]);
+    }
 }

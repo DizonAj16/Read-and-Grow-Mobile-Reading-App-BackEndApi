@@ -171,6 +171,8 @@ class UserController extends Controller
                 $student->student_lrn = $request->input('student_lrn', $student->student_lrn);
                 $student->student_grade = $request->input('student_grade', $student->student_grade);
                 $student->student_section = $request->input('student_section', $student->student_section);
+                $student->username = $request->input('username', $student->username);
+
                 $student->save();
             }
         }
@@ -228,6 +230,27 @@ class UserController extends Controller
     }
 
 
+    /**
+     * Get all student profile picture URLs.
+     */
+    public function getAllStudentProfilePictures()
+    {
+        $students = Student::with('user:id,username')->get();
+
+        $result = $students->map(function ($student) {
+            return [
+                'student_id' => $student->id,
+                'username' => $student->user ? $student->user->username : null,
+                'profile_picture' => $student->profile_picture
+                    ? asset('storage/profile_images/' . $student->profile_picture)
+                    : asset('storage/profile_images/default.png'), // fallback default
+            ];
+        });
+
+        return response()->json([
+            'students' => $result
+        ]);
+    }
 
 
 
