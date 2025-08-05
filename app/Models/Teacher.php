@@ -16,7 +16,6 @@ class Teacher extends Model
         'teacher_email',
         'teacher_position',
         'profile_picture',
-
     ];
 
     public function user()

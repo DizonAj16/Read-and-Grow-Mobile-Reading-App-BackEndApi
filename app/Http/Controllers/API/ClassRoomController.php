@@ -8,12 +8,15 @@ use Illuminate\Http\Request;
 use App\Models\ClassRoom;
 use App\Models\Teacher;
 use App\Models\Student;
+use App\Models\GradeLevel;
+
 
 class ClassRoomController extends Controller
 {
     /**
      * Store a new classroom (teacher-only).
      */
+
     public function store(Request $request)
     {
         $teacher = Teacher::where('user_id', $request->user()->id)->firstOrFail();
@@ -25,13 +28,20 @@ class ClassRoomController extends Controller
             'school_year' => 'nullable|string|max:20',
         ]);
 
+        // 🔍 Lookup grade_level_id based on the grade_level value (e.g., '1', '2', etc.)
+        $gradeLevel = GradeLevel::where('level', $validated['grade_level'])->first();
+
+        if (!$gradeLevel) {
+            return response()->json(['message' => 'Invalid grade level'], 422);
+        }
+
         $class = ClassRoom::create([
             'teacher_id' => $teacher->id,
             'class_name' => $validated['class_name'],
             'grade_level' => $validated['grade_level'],
+            'grade_level_id' => $gradeLevel->id, // ✅ assign correct grade_level_id
             'section' => $validated['section'] ?? null,
             'school_year' => $validated['school_year'] ?? null,
-            // classroom_code and number_of_students handled in model
         ]);
 
         return response()->json([
@@ -39,6 +49,7 @@ class ClassRoomController extends Controller
             'class' => $class
         ], 201);
     }
+
 
     /**
      * Get all classes of the authenticated teacher.
@@ -55,6 +66,7 @@ class ClassRoomController extends Controller
                     'id' => $class->id,
                     'class_name' => $class->class_name,
                     'grade_level' => $class->grade_level,
+                    'grade_level_id' => $class->grade_level_id,
                     'section' => $class->section,
                     'school_year' => $class->school_year,
                     'student_count' => $class->students()->count(),
@@ -83,6 +95,7 @@ class ClassRoomController extends Controller
             'id' => $classroom->id,
             'class_name' => $classroom->class_name,
             'grade_level' => $classroom->grade_level,
+            'grade_level_id' => $classroom->grade_level_id,
             'section' => $classroom->section,
             'school_year' => $classroom->school_year,
             'student_count' => $classroom->students->count(),
@@ -386,8 +399,8 @@ class ClassRoomController extends Controller
                     'teacher_position' => $teacher->teacher_position ?? 'Teacher',
                     'teacher_avatar' => $teacher && $teacher->profile_picture
                         ? asset("storage/profile_images/{$teacher->profile_picture}")
-                        : asset("storage/profile_images/default.png"), // fallback default
-    
+                        : null,
+
                     // ✅ Class Background (Dynamic)
                     'background_image' => $classroom->background_image
                         ? asset("storage/class_backgrounds/{$classroom->background_image}")

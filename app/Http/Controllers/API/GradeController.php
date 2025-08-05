@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Grade;
+use App\Models\GradeLevel;
 use Illuminate\Http\Request;
 
 class GradeController extends Controller
@@ -13,7 +14,7 @@ class GradeController extends Controller
      */
     public function index()
     {
-        $grades = Grade::select('id', 'name', 'level')
+        $grades = GradeLevel::select('id', 'name', 'level')
             ->orderBy('level', 'asc')
             ->get();
 

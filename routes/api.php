@@ -7,6 +7,8 @@ use App\Http\Controllers\API\ClassRoomController;
 use App\Http\Controllers\API\GradeController;
 use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\API\StudentTaskProgressController;
+use App\Http\Controllers\API\TaskPdfMaterialController;
+
 
 // ============ AUTHENTICATION ROUTES ============
 Route::prefix('auth')->group(function () {
@@ -36,13 +38,20 @@ Route::middleware(['auth:sanctum', 'role:teacher,admin'])->prefix('teachers')->g
     Route::get('/', [UserController::class, 'getAllTeachers']);               // GET /teachers/
     Route::delete('users/{id}', [UserController::class, 'deleteUser']);       // DELETE /teachers/users/{id}
     Route::put('users/{id}', [UserController::class, 'updateUser']);          // PUT /teachers/users/{id}
+
+    Route::prefix('pdfs')->group(function () {
+        Route::post('/', [TaskPdfMaterialController::class, 'store']);               // POST /teachers/pdfs/
+        Route::get('{class_room_id}', [TaskPdfMaterialController::class, 'getByClassroom']); // GET /teachers/pdfs/{class_room_id}
+        Route::delete('{id}', [TaskPdfMaterialController::class, 'deletePdf']);        // DELETE /teachers/pdfs/{id}
+    });
 });
 
 // ============ STUDENT ROUTES ============
 Route::middleware(['auth:sanctum', 'role:student'])->prefix('students')->group(function () {
     Route::get('my-classes', [ClassRoomController::class, 'getStudentClasses']); // put first
     Route::get('tasks', [ClassRoomController::class, 'getStudentTasks']);
-    Route::get('    profile-pictures', [UserController::class, 'getAllStudentProfilePictures']); // ✅ NEW ROUTE HERE
+    Route::get('profile-pictures', [UserController::class, 'getAllStudentProfilePictures']); // ✅ NEW ROUTE HERE
+    Route::get('pdfs', [TaskPdfMaterialController::class, 'getMyClassroomPDFs']); // 🆕 Student can view PDFs
     Route::get('{id}', [UserController::class, 'getStudent']);
 
 });

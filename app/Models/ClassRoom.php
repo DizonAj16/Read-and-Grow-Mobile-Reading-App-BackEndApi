@@ -14,12 +14,13 @@ class ClassRoom extends Model
         'teacher_id',
         'class_name',
         'grade_level',
+        'grade_level_id',   
         'section',
         'school_year',
         'classroom_code',
         'number_of_students',
         'active',
-        'background_image', 
+        'background_image',
 
     ];
 
@@ -41,16 +42,21 @@ class ClassRoom extends Model
 
     // Relationships
 
-public function students()
-{
-    return $this->hasMany(Student::class, 'class_room_id');
-}
+    public function students()
+    {
+        return $this->hasMany(Student::class, 'class_room_id');
+    }
 
-public function teacher()
-{
-    return $this->belongsTo(Teacher::class, 'teacher_id', 'id');
-}
+    public function teacher()
+    {
+        return $this->belongsTo(Teacher::class, 'teacher_id', 'id');
+    }
 
+
+    public function gradeLevel()
+    {
+        return $this->belongsTo(GradeLevel::class);
+    }
 
 
 }

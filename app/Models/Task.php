@@ -19,7 +19,7 @@ class Task extends Model
     // ✅ A Task belongs to a Grade
     public function grade()
     {
-        return $this->belongsTo(Grade::class);
+        return $this->belongsTo(GradeLevel::class);
     }
 
     // ✅ A Task has many Student Progress Records
