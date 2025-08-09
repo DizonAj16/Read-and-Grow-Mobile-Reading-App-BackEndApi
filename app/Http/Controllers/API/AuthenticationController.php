@@ -8,9 +8,15 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use Illuminate\Support\Facades\Validator;
 
 class AuthenticationController extends Controller
 {
+    // Role constants
+    const ROLE_ADMIN = 'admin';
+    const ROLE_TEACHER = 'teacher';
+    const ROLE_STUDENT = 'student';
+
     // Helper: Standard validation error response
     protected function validationErrorResponse($errors, $customMessages = [])
     {
@@ -23,19 +29,6 @@ class AuthenticationController extends Controller
             'message' => 'Validation error',
             'errors' => $errors
         ], 422);
-    }
-
-    // Helper: Fetch user details by role
-    protected function fetchUserDetails($user)
-    {
-        if ($user->role === 'admin') {
-            return \DB::table('admins')->where('user_id', $user->id)->first();
-        } elseif ($user->role === 'teacher') {
-            return \DB::table('teachers')->where('user_id', $user->id)->first();
-        } elseif ($user->role === 'student') {
-            return \DB::table('students')->where('user_id', $user->id)->first();
-        }
-        return null;
     }
 
     // Helper: Find user by login (username, teacher_email, admin_email)
@@ -178,8 +171,7 @@ class AuthenticationController extends Controller
             ], 422);
         }
 
-        $login = $request->login;
-        $user = $this->findUserByLogin($login);
+        $user = $this->findUserByLogin($request->login);
 
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
@@ -190,31 +182,11 @@ class AuthenticationController extends Controller
         }
 
         $token = $user->createToken('api-token')->plainTextToken;
-        $details = $this->fetchUserDetails($user);
-
-        // ✅ Default empty class data
-        $studentClass = null;
-
-        // ✅ If role is student, call the getStudentClasses method
-        if ($user->role === 'student') {
-            $classRoomController = App::make(ClassRoomController::class);
-
-            // Manually authenticate for the request (so auth()->id() works)
-            auth()->login($user);
-
-            $response = $classRoomController->getStudentClasses(new Request());
-
-            if ($response->getStatusCode() === 200) {
-                $studentClass = $response->getData()->data;
-            }
-        }
 
         return response()->json([
             'token' => $token,
-            'role' => $user->role,
-            'user' => $user,
-            'details' => $details,
-            'student_class' => $studentClass // ✅ Now included automatically
+            'expires_in' => config('sanctum.expiration'),
+            'role' => $user->role
         ]);
     }
 
@@ -225,60 +197,42 @@ class AuthenticationController extends Controller
         return response()->json(['message' => 'Logged out']);
     }
 
-    public function getUsers(Request $request)
-    {
-        if ($request->user()->role !== 'admin') {
-            return response()->json(['message' => 'Forbidden'], 403);
-        }
-        return response()->json(User::all());
-    }
+
 
     public function adminLogin(Request $request)
     {
-        $validator = \Validator::make($request->all(), [
+        $validator = Validator::make($request->all(), [
             'login' => 'required',
             'password' => 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'success' => false,
                 'message' => 'Validation error',
                 'errors' => $validator->errors()
             ], 422);
         }
 
-        $login = $request->login;
-        $user = $this->findUserByLogin($login);
+        $user = $this->findUserByLogin($request->login);
 
-        if (!$user || $user->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Admin user not found'
-            ], 404);
+        if (!$user || $user->role !== self::ROLE_ADMIN) {
+            return response()->json(['message' => 'Admin not found'], 404);
         }
 
         if (!Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Incorrect password'
-            ], 401);
+            return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
-        $adminDetails = \DB::table('admins')->where('user_id', $user->id)->first();
+        $admin = \DB::table('admins')->where('user_id', $user->id)->first();
 
         if (!$request->filled('admin_security_code')) {
             return response()->json([
-                'success' => false,
-                'step' => 2,
                 'message' => 'Admin security code required'
             ], 401);
         }
 
-        if (!$adminDetails || $adminDetails->admin_security_code !== $request->admin_security_code) {
+        if (!$admin || $admin->admin_security_code !== $request->admin_security_code) {
             return response()->json([
-                'success' => false,
-                'step' => 2,
                 'message' => 'Incorrect admin security code'
             ], 401);
         }
@@ -286,12 +240,9 @@ class AuthenticationController extends Controller
         $token = $user->createToken('api-token')->plainTextToken;
 
         return response()->json([
-            'success' => true,
             'token' => $token,
-            'role' => $user->role,
-            'user' => $user,
-            'details' => $adminDetails,
-            'message' => 'Admin login successful'
+            'expires_in' => config('sanctum.expiration'),
+            'role' => $user->role
         ]);
     }
 

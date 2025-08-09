@@ -391,9 +391,11 @@ class ClassRoomController extends Controller
                     'class_name' => $classroom->class_name,
                     'grade_level' => $classroom->grade_level,
                     'section' => $classroom->section ?? 'N/A',
+                    'school_year' => $classroom->school_year ?? 'N/A',
                     'classroom_code' => $classroom->classroom_code ?? 'N/A',
 
                     // ✅ Teacher Details (Dynamic)
+                    'teacher_id' => $teacher ? $teacher->id : null,
                     'teacher_name' => $teacher->teacher_name ?? 'N/A',
                     'teacher_email' => $teacher->teacher_email ?? 'N/A',
                     'teacher_position' => $teacher->teacher_position ?? 'Teacher',

@@ -13,6 +13,11 @@ use App\Models\Student;
 
 class UserController extends Controller
 {
+    // Role constants
+    const ROLE_ADMIN = 'admin';
+    const ROLE_TEACHER = 'teacher';
+    const ROLE_STUDENT = 'student';
+
     /**
      * Get admin user and details by user ID.
      */
@@ -252,7 +257,27 @@ class UserController extends Controller
         ]);
     }
 
+    public function getAuthProfile(Request $request)
+    {
+        $user = $request->user();
 
+        switch ($user->role) {
+            case User::ROLE_STUDENT:
+                return $this->getStudent($user->id);
+            case User::ROLE_TEACHER:
+                return $this->getTeacher($user->id);
+            case User::ROLE_ADMIN:
+                return $this->getAdmin($user->id);
+            default:
+                return response()->json(['message' => 'Unknown role'], 400);
+        }
+    }
 
-
+    public function getUsers(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+        return response()->json(User::all());
+    }
 }
