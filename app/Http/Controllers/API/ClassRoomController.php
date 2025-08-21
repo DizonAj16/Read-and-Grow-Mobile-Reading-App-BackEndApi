@@ -400,7 +400,7 @@ class ClassRoomController extends Controller
                     'teacher_email' => $teacher->teacher_email ?? 'N/A',
                     'teacher_position' => $teacher->teacher_position ?? 'Teacher',
                     'teacher_avatar' => $teacher && $teacher->profile_picture
-                        ? asset("storage/profile_images/{$teacher->profile_picture}")
+                        ? asset("{$teacher->profile_picture}")
                         : null,
 
                     // ✅ Class Background (Dynamic)
