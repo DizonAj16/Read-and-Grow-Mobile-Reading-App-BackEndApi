@@ -16,19 +16,19 @@ class TaskMaterialController extends Controller
     private $fileTypeConfig = [
         'pdf' => [
             'mimes' => 'pdf',
-            'max_size' => 10240, // 10MB
+            'max_size' => 30240, // 10MB
             'icon' => 'description',
             'type' => 'document'
         ],
         'image' => [
             'mimes' => 'jpg,jpeg,png,gif,bmp,webp,svg',
-            'max_size' => 5120, // 5MB
+            'max_size' => 10240, // 5MB
             'icon' => 'image',
             'type' => 'image'
         ],
         'video' => [
             'mimes' => 'mp4,avi,mov,wmv,flv,mkv,webm',
-            'max_size' => 51200, // 50MB
+            'max_size' => 100000, // 50MB
             'icon' => 'videocam',
             'type' => 'video'
         ],
@@ -40,7 +40,7 @@ class TaskMaterialController extends Controller
         ],
         'document' => [
             'mimes' => 'doc,docx,ppt,pptx,xls,xlsx,txt,rtf',
-            'max_size' => 10240, // 10MB
+            'max_size' => 30240, // 10MB
             'icon' => 'article',
             'type' => 'document'
         ],
